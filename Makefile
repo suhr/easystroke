@@ -31,18 +31,18 @@ LDFLAGS  = $(DFLAGS)
 LIBS     = $(DFLAGS) -lboost_serialization -lX11 -lXext -lXi -lXfixes -lXtst `pkg-config gtkmm-3.0 dbus-glib-1 --libs`
 
 BINARY   = easystroke
-ICON     = easystroke.svg
+ICON     = data/easystroke.svg
 MENU     = easystroke.desktop
 MANPAGE  = easystroke.1
 
-CCFILES  = $(wildcard *.cc)
-HFILES   = $(wildcard *.h)
-OFILES   = $(patsubst %.cc,%.o,$(CCFILES)) stroke.o cellrenderertextish.o gui.o desktop.o version.o
+CCFILES  = $(wildcard src/*.cc)
+HFILES   = $(wildcard src/*.h)
+OFILES   = $(patsubst %.cc,%.o,$(CCFILES)) src/stroke.o src/cellrenderertextish.o src/gui.o src/desktop.o src/version.o
 POFILES  = $(wildcard po/*.po)
 MOFILES  = $(patsubst po/%.po,po/%/LC_MESSAGES/easystroke.mo,$(POFILES))
 MODIRS   = $(patsubst po/%.po,po/%,$(POFILES))
-DEPFILES = $(wildcard *.Po)
-GENFILES = gui.c desktop.c po/POTFILES.in easystroke.desktop
+DEPFILES = $(wildcard src/*.Po)
+GENFILES = src/gui.c src/desktop.c po/POTFILES.in easystroke.desktop
 GZFILES  = $(wildcard *.gz)
 
 VERSION  = $(shell test -e debian/changelog && grep '(.*)' debian/changelog | sed 's/.*(//' | sed 's/).*//' | head -n1 || (test -e version && cat version || git describe))
@@ -64,7 +64,7 @@ include $(DEPFILES)
 $(BINARY): $(OFILES)
 	$(CXX) $(LDFLAGS) -o $@ $(OFILES) $(LIBS)
 
-stroke.o: stroke.c
+src/stroke.o: src/stroke.c
 	$(CC) $(STROKEFLAGS) $(AOFLAGS) -MT $@ -MMD -MP -MF $*.Po -o $@ -c $<
 
 %.o: %.c
@@ -73,18 +73,18 @@ stroke.o: stroke.c
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(OFLAGS) -MT $@ -MMD -MP -MF $*.Po -o $@ -c $<
 
-version.o: $(GIT)
+src/version.o: $(GIT)
 	echo 'const char *version_string = "$(VERSION)";' | $(CXX) -o $@ -c -xc++ -
 
-gui.c: gui.glade
+src/gui.c: gui.glade
 	echo "const char *gui_buffer = \"\\" > $@
 	sed 's/"GtkWindow"/"GtkApplicationWindow"/' $< | sed 's/"/\\"/g' | sed 's/ *\(.*\)/\1\\n\\/' >> $@
 	echo "\";" >> $@
 
-easystroke.desktop: easystroke.desktop.in $(MOFILES)
+easystroke.desktop: data/easystroke.desktop.in $(MOFILES)
 	intltool-merge po/ -d -u $< $@
 
-desktop.c: easystroke.desktop
+src/desktop.c: easystroke.desktop
 	echo "const char *desktop_file = \"\\" > $@
 	sed 's/Exec=easystroke/Exec=%1$$s/' $< | sed 's/"/\\"/g' | sed 's/.*/&\\n\\/' >> $@
 	echo "\";" >> $@
@@ -93,7 +93,7 @@ po/POTFILES.in: $(CCFILES) $(HFILES)
 	$(RM) $@
 	for f in `grep -El "\<_\(" $^`; do echo $$f >> $@; done
 	echo gui.glade >> $@
-	echo easystroke.desktop.in >> $@
+	echo data/easystroke.desktop.in >> $@
 
 translate: po/POTFILES.in
 	cd po && XGETTEXT_ARGS="--package-name=easystroke --copyright-holder='Thomas Jaeger <ThJaeger@gmail.com>'" intltool-update --pot -g messages
